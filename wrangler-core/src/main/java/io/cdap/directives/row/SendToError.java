@@ -146,16 +146,19 @@ public class SendToError implements Directive, Lineage {
         }
           String failedRow = st.deleteCharAt(st.length() - 1).toString();
           System.out.println(failedRow);
+          System.out.println(metric);
           System.out.println(connection);
           // call tableInsertRows which instret the failed row to big query table.
           // Create a row to insert
           Map<String, Object> rowContent = new HashMap<>();
           rowContent.put("FailedRow", failedRow);
           rowContent.put("ErrorMessage", message);
-          String projectId = connection.split(":")[0];
-          String dataset = connection.split(":")[1];
-          //insert the failed row details.
-          insertFailedRow(projectId, dataset, "ErrorTable", rowContent);
+          if(connection !=null) {
+            String projectId = connection.split(":")[0];
+            String dataset = connection.split(":")[1];
+            //insert the failed row details.
+         //  insertFailedRow(projectId, dataset, "ErrorTable", rowContent);
+          }
           throw new ErrorRowException(NAME, message, 1);
         }
       } catch (ELException e) {
