@@ -157,7 +157,7 @@ public class SendToError implements Directive, Lineage {
             String projectId = connection.split(":")[0];
             String dataset = connection.split(":")[1];
             //insert the failed row details.
-         //  insertFailedRow(projectId, dataset, "ErrorTable", rowContent);
+          insertFailedRow(projectId, dataset, "ErrorTable", rowContent);
           }
           throw new ErrorRowException(NAME, message, 1);
         }
