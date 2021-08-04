@@ -64,10 +64,11 @@ public class SendToErrorTest {
 
   @Test
   public void testErrorConditionTrue() throws Exception {
+    String error = "'Mazin is a great programmer' 'projectId:dataset'";
     String[] directives = new String[] {
       "parse-as-csv body , true",
       "drop body",
-      "send-to-error C == 1",
+      "send-to-error exp:{ C == 1 }  " + error,
     };
 
     List<Row> rows = Arrays.asList(

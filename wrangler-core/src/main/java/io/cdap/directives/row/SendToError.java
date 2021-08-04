@@ -16,6 +16,7 @@
 
 package io.cdap.directives.row;
 
+import com.google.cloud.bigquery.*;
 import io.cdap.cdap.api.annotation.Description;
 import io.cdap.cdap.api.annotation.Name;
 import io.cdap.cdap.api.annotation.Plugin;
@@ -41,7 +42,9 @@ import io.cdap.wrangler.expression.ELException;
 import io.cdap.wrangler.expression.ELResult;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * A directive for erroring the record if
@@ -62,6 +65,7 @@ public class SendToError implements Directive, Lineage {
   private String condition;
   private String metric = null;
   private String message = null;
+  private String connection = null;
 
   @Override
   public UsageDefinition define() {
@@ -69,6 +73,7 @@ public class SendToError implements Directive, Lineage {
     builder.define("condition", TokenType.EXPRESSION);
     builder.define("metric", TokenType.IDENTIFIER, Optional.TRUE);
     builder.define("message", TokenType.TEXT, Optional.TRUE);
+    builder.define("connection", TokenType.TEXT, Optional.TRUE);
     return builder.build();
   }
 
@@ -87,6 +92,9 @@ public class SendToError implements Directive, Lineage {
     }
     if (args.contains("message")) {
       message = ((Text) args.value("message")).value();
+    }
+    if (args.contains("connection")) {
+      connection = ((Text) args.value("connection")).value();
     }
   }
 
@@ -114,13 +122,40 @@ public class SendToError implements Directive, Lineage {
       // mapped into context.
       try {
         ELResult result = el.execute(ctx);
+        //if error then increment the metric by 1
+        //send the failed row to error table.
         if (result.getBoolean()) {
           if (metric != null && context != null) {
             context.getMetrics().count(metric, 1);
           }
+
+          if(message !=null) {
+            System.out.println("Great Message=" + message);
+          }
           if (message == null) {
             message = condition;
           }
+          //TODO we need to send the error message to BigQuery
+          StringBuilder st = new StringBuilder();
+          for (int i = 0; i < row.width(); i++) {
+            String columnName = row.getColumn(i);
+            Object columnValue = row.getValue(i);
+            String sf1 =String.format("column=%s:value=%s",columnName, columnValue);
+            st.append(sf1);
+            st.append(",");
+        }
+          String failedRow = st.deleteCharAt(st.length() - 1).toString();
+          System.out.println(failedRow);
+          System.out.println(connection);
+          // call tableInsertRows which instret the failed row to big query table.
+          // Create a row to insert
+          Map<String, Object> rowContent = new HashMap<>();
+          rowContent.put("FailedRow", failedRow);
+          rowContent.put("ErrorMessage", message);
+          String projectId = connection.split(":")[0];
+          String dataset = connection.split(":")[1];
+          //insert the failed row details.
+          insertFailedRow(projectId, dataset, "ErrorTable", rowContent);
           throw new ErrorRowException(NAME, message, 1);
         }
       } catch (ELException e) {
@@ -129,6 +164,39 @@ public class SendToError implements Directive, Lineage {
       results.add(row);
     }
     return results;
+  }
+
+  private void insertFailedRow(
+          String projectId,
+          String datasetName, String tableName, Map<String, Object> rowContent) {
+    try {
+      // Initialize client that will be used to send requests. This client only needs to be created
+      // once, and can be reused for multiple requests.
+      BigQuery bigquery = BigQueryOptions.getDefaultInstance().getService();
+
+      // Get table
+      TableId tableId = TableId.of(projectId, datasetName, tableName);
+
+      // Inserts rowContent into datasetName:tableId.
+      InsertAllResponse response =
+              bigquery.insertAll(
+                      InsertAllRequest.newBuilder(tableId)
+                              // More rows can be added in the same RPC by invoking .addRow() on the builder.
+                              // You can also supply optional unique row keys to support de-duplication
+                              // scenarios.
+                              .addRow(rowContent)
+                              .build());
+
+      if (response.hasErrors()) {
+        // If any of the insertions failed, this lets you inspect the errors
+        for (Map.Entry<Long, List<BigQueryError>> entry : response.getInsertErrors().entrySet()) {
+          System.out.println("Response error: \n" + entry.getValue());
+        }
+      }
+      System.out.println("Rows successfully inserted into table");
+    } catch (BigQueryException e) {
+      System.out.println("Insert operation not performed \n" + e.toString());
+    }
   }
 
   @Override

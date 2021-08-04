@@ -69,6 +69,12 @@
       <scope>provided</scope>
     </dependency>
 
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-bigquery</artifactId>
+      <version>1.125.0</version>
+    </dependency>
+
     <!-- Test -->
 
     <dependency>

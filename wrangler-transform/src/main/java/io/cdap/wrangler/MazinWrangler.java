@@ -81,10 +81,10 @@ import javax.annotation.Nullable;
  * by the user.
  */
 @Plugin(type = "transform")
-@Name("Wrangler")
-@Description("Wrangler - A interactive tool for data cleansing and transformation.")
-public class Wrangler extends Transform<StructuredRecord, StructuredRecord> {
-  private static final Logger LOG = LoggerFactory.getLogger(Wrangler.class);
+@Name("MazinWrangler")
+@Description("Mazin Wrangler - A interactive tool for data cleansing and transformation.")
+public class MazinWrangler extends Transform<StructuredRecord, StructuredRecord> {
+  private static final Logger LOG = LoggerFactory.getLogger(MazinWrangler.class);
 
   // Configuration specifying the dataprep application and service name.
   private static final String APPLICATION_NAME = "dataprep";
@@ -118,7 +118,7 @@ public class Wrangler extends Transform<StructuredRecord, StructuredRecord> {
   private String onErrorStrategy;
 
   // This is used only for tests, otherwise this is being injected by the ingestion framework.
-  public Wrangler(Config config) {
+  public MazinWrangler(Config config) {
     this.config = config;
   }
 
